@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vancouver Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <style>
+        html, body { margin: 0; height: 100%; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; }
+        #addPinBtn {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            box-shadow: 0px 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <button id="addPinBtn">+ Add Pin</button>
+    <div id="map"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Firebase Configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyA64DkzkS0Sf3typWETjOk7Mayd2KxHjyM",
+                authDomain: "activist-atlas-1281e.firebaseapp.com",
+                projectId: "activist-atlas-1281e",
+                storageBucket: "activist-atlas-1281e.appspot.com",
+                messagingSenderId: "604977130340",
+                appId: "1:604977130340:web:672ba46160fb8bdcb2e871",
+                measurementId: "G-2G515E7G7X"
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+
+            // Initialize the map
+            var map = L.map('map').setView([49.2827, -123.1207], 12);
+
+            // Load map tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Load saved pins from Firestore
+            function loadPins() {
+                db.collection("mapPins").get().then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        let data = doc.data();
+                        L.marker([data.lat, data.lng]).addTo(map)
+                            .bindPopup(data.text);
+                    });
+                });
+            }
+            loadPins();
+
+            // Add marker functionality
+            document.getElementById('addPinBtn').addEventListener('click', function () {
+                map.once('click', function (e) {
+                    var popupContent = '<input type="text" id="markerText" class="popup-input" placeholder="Enter text">' +
+                                       '<button onclick="saveMarker(' + e.latlng.lat + ',' + e.latlng.lng + ')">Save</button>';
+                    L.popup()
+                        .setLatLng(e.latlng)
+                        .setContent(popupContent)
+                        .openOn(map);
+                });
+            });
+
+            // Function to save markers to Firestore
+            window.saveMarker = function(lat, lng) {
+                var text = document.getElementById('markerText').value;
+                db.collection("mapPins").add({ lat: lat, lng: lng, text: text }).then(() => {
+                    L.marker([lat, lng]).addTo(map)
+                        .bindPopup(text)
+                        .openPopup();
+                }).catch(error => {
+                    console.error("Error saving pin:", error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
